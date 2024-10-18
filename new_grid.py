@@ -5,6 +5,7 @@ import numpy as np
 from utilities import (
     ecef_to_ned,
     extract_gps_data,
+    extract_xmp,
     geodetic_to_ecef,
     get_image_properties,
     plot_3DGrid,
@@ -15,8 +16,6 @@ DIR = "/home/bota/Desktop/wheat/APPEZZAMENTO PICCOLO/"
 
 images, geodetic_data, geocentric_data, ned_data = [], [], [], []
 images.extend(glob.glob(os.path.join(DIR, "*.JPG")))
-
-gps_info_ref = get_image_properties(images[0])["GPSInfo"]
 
 
 for image_path in images:
@@ -53,4 +52,7 @@ distance_ned = np.linalg.norm(np.array(ned1) - np.array(ned2))
 # print(f"Y Distance between points in NED frame: {ned1[1] - ned2[1]} meters")
 # print(f"Z Distance between points in NED frame: {ned1[2] - ned2[2]} meters")
 
-plot_3DGrid(ned_data)
+# plot_3DGrid(ned_data)
+
+metadata = extract_xmp(images[0])
+print(metadata)

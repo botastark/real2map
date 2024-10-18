@@ -1,10 +1,12 @@
 from PIL.ExifTags import TAGS, GPSTAGS
 from PIL import Image
+import libxmp
 from matplotlib import pyplot as plt
 import pyproj
 import navpy
 import numpy as np
-
+from libxmp import XMPFiles, consts
+import xml.etree.ElementTree as ET
 
 wgs84 = pyproj.CRS("EPSG:4326")  # Geodetic (Lat, Lon, Alt) CRS
 ecef = pyproj.CRS("EPSG:4978")  # ECEF CRS
@@ -72,6 +74,13 @@ def get_image_properties(image_path):
                 gps_tag = GPSTAGS.get(key, key)
                 gps_info[gps_tag] = exif_info["GPSInfo"][key]
             image_data["GPSInfo"] = gps_info
+        # if "XMP Other" in exif_info:
+        #     print("additional info found")
+        #     other_info = {}
+        #     for key in exif_info["XMP Other"].keys():
+        #         gps_tag = GPSTAGS.get(key, key)
+        #         gps_info[gps_tag] = exif_info["GPSInfo"][key]
+        #     image_data["GPSInfo"] = gps_info
 
     return image_data
 
@@ -98,3 +107,17 @@ def plot_3DGrid(points):
     cbar.set_label("Point Index")
 
     plt.show()
+
+
+from libxmp import *
+
+
+def extract_xmp(image_path):
+    img = Image.open(image_path)
+
+    metadata = {}
+    xmp_data = img.getxmp()["xmpmeta"]["RDF"]["Description"]
+    for key, value in xmp_data.items():
+        metadata[key] = value
+
+    return metadata
