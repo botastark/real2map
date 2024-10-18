@@ -4,6 +4,20 @@ from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
 
 
+class GPS_point:
+    def __init__(self, lon=None, lat=None, alt=None) -> None:
+        self.lon = lon
+        self.lat = lat
+        self.alt = alt
+
+
+class converter:
+    def __init__(self, ref_path):
+        self.ref = extract_gps_data(get_image_properties(ref_path)["GPSInfo"])
+        lat_dd, lon_dd, altitude = extract_gps_data(rimage_properties["GPSInfo"])
+        pass
+
+
 def get_image_properties(image_path):
     # Open the image file
     img = Image.open(image_path)
@@ -78,7 +92,7 @@ def ecef2ned(p, p_ref, lon_ref, lat_ref):
     )
     assert p.shape == p_ref.shape
 
-    return R * (p - p_ref)
+    return np.dot(R, (p - p_ref))
 
 
 # Function to convert degrees, minutes, seconds to decimal degrees
@@ -115,31 +129,40 @@ Get:
     Point p: x, y, z (NED), wrt Ref point is (0,0,0) NED
 """
 
-ref_point = np.array([])
 
-# Example usage
 rimage_path = "/workspaces/real2map/APPEZZAMENTO PICCOLO/DJI_20240607121127_0003_D.JPG"
 sec_image_path = (
     "/workspaces/real2map/APPEZZAMENTO PICCOLO/DJI_20240607121129_0004_D_point0.JPG"
 )
 
 rimage_properties = get_image_properties(rimage_path)
-print(rimage_properties["GPSInfo"])
+# print(rimage_properties["GPSInfo"])
 
 lat_dd, lon_dd, altitude = extract_gps_data(rimage_properties["GPSInfo"])
-print(f"Latitude: {lat_dd}°, Longitude: {lon_dd}°, Altitude: {altitude} m")
+# print(f"Latitude: {lat_dd}°, Longitude: {lon_dd}°, Altitude: {altitude} m")
 
 # Convert geodetic to ECEF
-ecef_coords = geodetic2ecef(math.radians(lat_dd), math.radians(lon_dd), altitude)
+ecef_coords = np.array(
+    geodetic2ecef(math.radians(lat_dd), math.radians(lon_dd), altitude)
+)  # .reshape((3, 1))
 print(f"Ref point ECEF Coordinates: {ecef_coords}")
 
 
-simage_properties = get_image_properties(rimage_path)
-print(simage_properties["GPSInfo"])
+simage_properties = get_image_properties(sec_image_path)
+# print(simage_properties["GPSInfo"])
 
 slat_dd, slon_dd, saltitude = extract_gps_data(simage_properties["GPSInfo"])
-print(f"second Latitude: {slat_dd}°, Longitude: {slon_dd}°, Altitude: {saltitude} m")
+# print(f"second Latitude: {slat_dd}°, Longitude: {slon_dd}°, Altitude: {saltitude} m")
 
-# Convert geodetic to ECEF
-secef_coords = geodetic2ecef(math.radians(slat_dd), math.radians(slon_dd), saltitude)
+# # Convert geodetic to ECEF
+secef_coords = np.array(
+    geodetic2ecef(math.radians(slat_dd), math.radians(slon_dd), saltitude)
+)  # .reshape((3, 1))
 print(f"2nd point ECEF Coordinates: {secef_coords}")
+
+# Obtain NED of s point given that ref point is (0,0) of NED
+r_ned = ecef2ned(ecef_coords, ecef_coords, lon_dd, lat_dd)
+print(r_ned)
+
+s_ned = ecef2ned(secef_coords, ecef_coords, lon_dd, lat_dd)
+print(s_ned)
