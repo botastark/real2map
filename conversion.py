@@ -1,14 +1,13 @@
-from PIL import Image
-
-# import piexif
-from PIL.ExifTags import TAGS, GPSTAGS
-
 a = 6378137.0
 b = 6356752.314245
 inv_f = 298.257223563
 e_sq = 6.69437999014 * 1e-3
 import math
 import numpy as np
+import pygeodesy
+from pygeodesy.ellipsoidalKarney import LatLon
+
+ginterpolator = pygeodesy.GeoidKarney("./geoids/egm84-15.pgm")
 
 
 class GPS_point:
@@ -19,9 +18,9 @@ class GPS_point:
             self.lon = math.radians(lon)
             self.lat = math.radians(lat)
         else:
-            self.lon = lon
-            self.lat = lat
-        self.alt = alt
+            self.lon = float(lon)
+            self.lat = float(lat)
+        self.alt = float(alt)
 
     def inrad(self):
         if self.rad == False:
@@ -96,46 +95,16 @@ class WRF_point:
 
 
 class Converter:
-    def __init__(self, ref_path):
-        self.ref_geodetic = self.extract_gps_data(ref_path)
-        print(self.ref_geodetic)
+    def __init__(self, gps_info):
+        self.ref_geodetic = self.extract_gps_data(gps_info)
         self.ref_ECEF = self.geodetic2ecef(self.ref_geodetic.inrad())
+        # Get the geoid height
+        single_position = LatLon(self.ref_geodetic.lat, self.ref_geodetic.lon)
+        h = ginterpolator(single_position)
+        print(h)
 
-        print(self.ref_ECEF)
+    def extract_gps_data(self, gps_info):
 
-    def get_image_properties(self, image_path):
-        img = Image.open(image_path)
-
-        image_data = {}
-
-        # image_data["Format"] = img.format
-        # image_data["Mode"] = img.mode
-        # image_data["Size"] = img.size  # (width, height)
-        # image_data["Info"] = img.info
-
-        exif_data = img._getexif()
-
-        if exif_data:
-            # Initialize a dictionary for EXIF data
-            exif_info = {}
-            for tag, value in exif_data.items():
-                tag_name = TAGS.get(tag, tag)
-                exif_info[tag_name] = value
-            # image_data["EXIF"] = exif_info
-
-            # # Extract GPS info if available
-            if "GPSInfo" in exif_info:
-                gps_info = {}
-                for key in exif_info["GPSInfo"].keys():
-                    gps_tag = GPSTAGS.get(key, key)
-                    gps_info[gps_tag] = exif_info["GPSInfo"][key]
-                image_data["GPSInfo"] = gps_info
-
-        return image_data
-
-    # Extract and convert GPS coordinates from the EXIF GPSInfo
-    def extract_gps_data(self, image_path):
-        gps_info = self.get_image_properties(image_path)["GPSInfo"]
         lat_dms = gps_info["GPSLatitude"]
         lat_ref = gps_info["GPSLatitudeRef"]
         lon_dms = gps_info["GPSLongitude"]
@@ -158,8 +127,7 @@ class Converter:
         return decimal_degrees
 
     def radius_n(self, lat):
-        cot = math.cos(lat) / math.sin(lat)
-        return a / (1 - e_sq / (1 + cot * cot)) ** 0.5
+        return a / math.sqrt(1 - e_sq * math.sin(lat) ** 2)
 
     def geodetic2ecef(self, point):
         N = self.radius_n(point.lat)
@@ -184,22 +152,3 @@ class Converter:
             ]
         )
         return WRF_point(np.dot(R, (p - self.ref_ECEF).to_array()))
-
-
-# DESKTOP = "/home/bota/Desktop/wheat"
-
-rimage_path = (
-    "/home/bota/Desktop/wheat/APPEZZAMENTO PICCOLO/DJI_20240607121127_0003_D.JPG"
-)
-
-conv = Converter(rimage_path)
-sec_image_path = (
-    "/home/bota/Desktop/wheat/APPEZZAMENTO PICCOLO/DJI_20240607121129_0004_D_point0.JPG"
-)
-
-p = conv.ecef2ned(conv.geodetic2ecef(conv.extract_gps_data(sec_image_path).inrad()))
-print(p)
-print(p.to_ENU())
-r = conv.ecef2ned(conv.geodetic2ecef(conv.extract_gps_data(rimage_path).inrad()))
-print(r)
-print(r.to_ENU())
