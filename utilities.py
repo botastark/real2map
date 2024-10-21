@@ -1,12 +1,11 @@
 from PIL.ExifTags import TAGS, GPSTAGS
 from PIL import Image
-import libxmp
 from matplotlib import pyplot as plt
 import pyproj
 import navpy
 import numpy as np
-from libxmp import XMPFiles, consts
 import xml.etree.ElementTree as ET
+from libxmp import *
 
 wgs84 = pyproj.CRS("EPSG:4326")  # Geodetic (Lat, Lon, Alt) CRS
 ecef = pyproj.CRS("EPSG:4978")  # ECEF CRS
@@ -24,12 +23,13 @@ def _dms_to_dd(dms_tuple, ref):
     return decimal_degrees
 
 
-def extract_gps_data(gps_info):
+def extract_gps_data(gps_info, xml_info):
     lat_dms = gps_info["GPSLatitude"]
     lat_ref = gps_info["GPSLatitudeRef"]
     lon_dms = gps_info["GPSLongitude"]
     lon_ref = gps_info["GPSLongitudeRef"]
-    altitude = gps_info["GPSAltitude"]
+    # altitude = gps_info["GPSAltitude"]
+    altitude = float(xml_info["RelativeAltitude"])
     lat_dd = _dms_to_dd(lat_dms, lat_ref)  # Latitude in decimal degrees
     lon_dd = _dms_to_dd(lon_dms, lon_ref)  # Longitude in decimal degrees
     return [lat_dd, lon_dd, altitude]
@@ -57,15 +57,16 @@ def get_image_properties(image_path):
     img = Image.open(image_path)
 
     image_data = {}
-
     exif_data = img._getexif()
+    xmp_data = img.getxmp()["xmpmeta"]["RDF"]["Description"]
+    image_data["XMPInfo"] = xmp_data
 
     if exif_data:
         exif_info = {}
         for tag, value in exif_data.items():
             tag_name = TAGS.get(tag, tag)
             exif_info[tag_name] = value
-        # image_data["EXIF"] = exif_info
+        image_data["EXIF"] = exif_info
 
         # # Extract GPS info if available
         if "GPSInfo" in exif_info:
@@ -74,14 +75,6 @@ def get_image_properties(image_path):
                 gps_tag = GPSTAGS.get(key, key)
                 gps_info[gps_tag] = exif_info["GPSInfo"][key]
             image_data["GPSInfo"] = gps_info
-        # if "XMP Other" in exif_info:
-        #     print("additional info found")
-        #     other_info = {}
-        #     for key in exif_info["XMP Other"].keys():
-        #         gps_tag = GPSTAGS.get(key, key)
-        #         gps_info[gps_tag] = exif_info["GPSInfo"][key]
-        #     image_data["GPSInfo"] = gps_info
-
     return image_data
 
 
@@ -107,17 +100,3 @@ def plot_3DGrid(points):
     cbar.set_label("Point Index")
 
     plt.show()
-
-
-from libxmp import *
-
-
-def extract_xmp(image_path):
-    img = Image.open(image_path)
-
-    metadata = {}
-    xmp_data = img.getxmp()["xmpmeta"]["RDF"]["Description"]
-    for key, value in xmp_data.items():
-        metadata[key] = value
-
-    return metadata
