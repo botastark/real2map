@@ -1,0 +1,11 @@
+numpy
+Pillow
+matplotlib
+opencv-python
+navpy
+pyproj
+pyxmp
+sudo apt-get install libexiv2-dev
+piexif
+
+python-xmp-toolkit

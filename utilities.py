@@ -5,7 +5,9 @@ import pyproj
 import navpy
 import numpy as np
 import xml.etree.ElementTree as ET
+
 from libxmp import *
+
 
 wgs84 = pyproj.CRS("EPSG:4326")  # Geodetic (Lat, Lon, Alt) CRS
 ecef = pyproj.CRS("EPSG:4978")  # ECEF CRS
@@ -58,6 +60,7 @@ def get_image_properties(image_path):
 
     image_data = {}
     exif_data = img._getexif()
+
     xmp_data = img.getxmp()["xmpmeta"]["RDF"]["Description"]
     image_data["XMPInfo"] = xmp_data
 
