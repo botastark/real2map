@@ -2,9 +2,10 @@ import os
 import glob
 
 # import cv2
+import cv2
 import numpy as np
 
-from proj import proj_world_coord
+from proj import camera
 from utilities import (
     ecef_to_ned,
     extract_gps_data,
@@ -21,7 +22,6 @@ images.extend(glob.glob(os.path.join(DIR, "*.JPG")))
 ref_point_info = get_image_properties(images[0])
 # print(ref_point_info["EXIF"].keys())
 
-# print(ref_point_info["XMPInfo"])
 # print(ref_point_info["EXIF"]["ExifImageHeight"])
 # print(ref_point_info["EXIF"]["LensSpecification"])
 
@@ -63,54 +63,17 @@ distance_ned = np.linalg.norm(np.array(ned1) - np.array(ned2))
 # print(f"Y Distance between points in NED frame: {ned1[1] - ned2[1]} meters")
 # print(f"Z Distance between points in NED frame: {ned1[2] - ned2[2]} meters")
 
-plot_3DGrid(ned_data)
-# print("ned data shaoe ", ned_data.shape)
+# plot_3DGrid(ned_data)
 
-img_width = float(ref_point_info["EXIF"]["ExifImageWidth"])
-img_height = float(ref_point_info["EXIF"]["ExifImageHeight"])
-cx = img_width / 2
-cy = img_height / 2
-yaw, pitch, roll = (
-    float(ref_point_info["XMPInfo"]["FlightYawDegree"]),
-    float(ref_point_info["XMPInfo"]["FlightPitchDegree"]),
-    float(ref_point_info["XMPInfo"]["FlightRollDegree"]),
-)
-f = float(ref_point_info["EXIF"]["FocalLength"])
-# Calculate focal lengths in pixels
-sensor_width = 17.3  # in mm
-sensor_height = 13.0  # in mm
-f_x = (f * img_width) / sensor_width
-f_y = (f * img_height) / sensor_height
+world_corners_all = []
+L2 = camera(ref_point_info)
+point_id = 2
+for point_id in range(len(images)):
+    img_info = get_image_properties(images[point_id])
+    T = ned_data[point_id]
 
-ned2[2] += ref_rel_alt
-print(ned2)
-T = ned2
-alpha = roll, pitch, yaw
-img_corners = np.array(
-    [[0, 0], [img_width, 0], [0, img_height], [img_width, img_height]]
-)
-# world_corner = []
-# for corner in img_corners:
-#     world_corner.append(proj_world_coord(f_x, f_y, cx, cy, T, alpha, corner))
+    world_corners = L2.imgToWorldCoord(T, img_info)
 
-# Convert image corners to normalized image coordinates
-img_corners_normalized = np.array(
-    [[(x - cx) / f_x, (y - cy) / f_y, 1.0] for x, y in img_corners]
-)
-# Transform rays into world coordinates
-world_corners = []
-# R = cv2.Rodrigues(np.array([roll, pitch, yaw]))[0]
-# ground_z = 0
-# for corner in img_corners_normalized:
-#     ray_dir = np.dot(R, corner)  # Rotate into world coordinates
-#     scale = (ground_z - T[2]) / ray_dir[
-#         2
-#     ]  # Compute scale factor for intersection with ground
-#     world_point = T + scale * ray_dir  # Compute world coordinates
-#     world_corners.append(world_point)
-
-# # world_corners = np.array(world_corners)
-# print(world_corners)
-# print("world_corners data shaoe ", world_corners.shape)
-
-# plot_3DGrid(world_corners)
+    world_corners_all.append(world_corners)
+# plot_3DGrid(world_corners_all)
+print(np.array(world_corners).shape)

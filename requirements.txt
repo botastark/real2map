@@ -1,11 +1,11 @@
 numpy
 Pillow
 matplotlib
-opencv-python
+opencv-python-headless
 navpy
 pyproj
 pyxmp
-sudo apt-get install libexiv2-dev
+# sudo apt-get install libexiv2-dev
 piexif
-
+defusedxml
 python-xmp-toolkit
