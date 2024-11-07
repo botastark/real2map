@@ -4,7 +4,6 @@ import numpy as np
 import cv2
 
 
-# def proj_world_coord(fx, fy, cx, cy, T, alpha, point):
 class camera:
     def __init__(self, ref_point_info):
         self.img_width = float(ref_point_info["EXIF"]["ExifImageWidth"])
@@ -47,12 +46,16 @@ class camera:
         T[2] += self.alt_offset
         img_corners_normalized = self._normalize_corners()
         yaw, pitch, roll = (
-            float(point_info["XMPInfo"]["FlightYawDegree"]),
-            float(point_info["XMPInfo"]["FlightPitchDegree"]),
-            float(point_info["XMPInfo"]["FlightRollDegree"]),
+            np.deg2rad(float(point_info["XMPInfo"]["GimbalYawDegree"])),
+            np.deg2rad(float(point_info["XMPInfo"]["GimbalPitchDegree"])),
+            np.deg2rad(float(point_info["XMPInfo"]["GimbalRollDegree"])),
         )
         world_corners = []
-        R = cv2.Rodrigues(np.array([roll, pitch, yaw]))[0]
+        R_z = cv2.Rodrigues(np.array([0, 0, yaw]))[0]
+        R_y = cv2.Rodrigues(np.array([0, pitch, 0]))[0]
+        R_x = cv2.Rodrigues(np.array([roll, 0, 0]))[0]
+        R = R_z @ R_y @ R_x  # Combine rotations in ZYX order
+        # R = cv2.Rodrigues(np.array([roll, pitch, yaw]))[0]
         ground_z = 0
         for corner in img_corners_normalized:
             ray_dir = np.dot(R, corner)  # Rotate into world coordinates

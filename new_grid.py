@@ -12,10 +12,11 @@ from utilities import (
     geodetic_to_ecef,
     get_image_properties,
     plot_3DGrid,
+    plot_fov,
 )
 
 
-DIR = "/home/bota/Desktop/wheat/APPEZZAMENTO PICCOLO/"
+DIR = "/media/bota/BOTA/wheat/APPEZZAMENTO PICCOLO/"
 
 images, geodetic_data, geocentric_data, ned_data = [], [], [], []
 images.extend(glob.glob(os.path.join(DIR, "*.JPG")))
@@ -67,13 +68,14 @@ distance_ned = np.linalg.norm(np.array(ned1) - np.array(ned2))
 
 world_corners_all = []
 L2 = camera(ref_point_info)
-point_id = 2
+# point_ids = [11, 16, 215, 123, 47]
 for point_id in range(len(images)):
+    # for point_id in point_ids:
     img_info = get_image_properties(images[point_id])
     T = ned_data[point_id]
 
     world_corners = L2.imgToWorldCoord(T, img_info)
-
     world_corners_all.append(world_corners)
-# plot_3DGrid(world_corners_all)
-print(np.array(world_corners).shape)
+# plot_3DGrid(world_corners)
+print(np.array(world_corners_all).shape)
+plot_fov(world_corners_all)

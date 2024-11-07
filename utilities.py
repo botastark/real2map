@@ -5,7 +5,7 @@ import pyproj
 import navpy
 import numpy as np
 import xml.etree.ElementTree as ET
-
+import matplotlib.cm as cm
 from libxmp import *
 
 
@@ -103,3 +103,24 @@ def plot_3DGrid(points):
     cbar.set_label("Point Index")
 
     plt.show()
+
+
+# https://stackoverflow.com/questions/67410270/how-to-draw-a-flat-3d-rectangle-in-matplotlib
+
+
+def plot_fov(points):
+    i = 0
+    for point in points:
+        # for each img there's 4 corners
+        ned = np.array(point)
+        xs = ned[:, 0]
+        ys = ned[:, 1]
+        zs = ned[:, 2]
+        fig = plt.figure(figsize=(8, 8))
+        ax = plt.axes(projection="3d")
+        # ax.contourf(xs, ys, zs, cmap=cm.coolwarm)
+        surf1 = ax.plot_trisurf(xs, ys, zs, antialiased=True)
+        if i == 2:
+            break
+    plt.show()
+    # break
