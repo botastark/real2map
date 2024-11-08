@@ -58,10 +58,12 @@ class camera:
         # R = cv2.Rodrigues(np.array([roll, pitch, yaw]))[0]
         ground_z = 0
         for corner in img_corners_normalized:
-            ray_dir = np.dot(R, corner)  # Rotate into world coordinates
+            ray_dir = R @ corner  # Rotate corner ray into world coordinates
+            # ray_dir = np.dot(R, corner)  # Rotate into world coordinates
             scale = (ground_z - T[2]) / ray_dir[2]
             # Compute scale factor for intersection with ground
             world_point = T + scale * ray_dir  # Compute world coordinates
             world_corners.append(world_point)
+
         return world_corners
         # print(world_corners)

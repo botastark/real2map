@@ -3,16 +3,21 @@ import glob
 
 # import cv2
 import cv2
+from matplotlib import pyplot as plt
 import numpy as np
 
 from proj import camera
 from utilities import (
     ecef_to_ned,
+    extract_field_shape,
     extract_gps_data,
     geodetic_to_ecef,
     get_image_properties,
+    gps2ned,
     plot_3DGrid,
+    plot_drone_fov_in_3d,
     plot_fov,
+    read_kmz_and_extract_coordinates,
 )
 
 
@@ -20,38 +25,24 @@ DIR = "/media/bota/BOTA/wheat/APPEZZAMENTO PICCOLO/"
 
 images, geodetic_data, geocentric_data, ned_data = [], [], [], []
 images.extend(glob.glob(os.path.join(DIR, "*.JPG")))
-ref_point_info = get_image_properties(images[0])
+
 # print(ref_point_info["EXIF"].keys())
 
 # print(ref_point_info["EXIF"]["ExifImageHeight"])
 # print(ref_point_info["EXIF"]["LensSpecification"])
 
-ref_rel_alt = float(ref_point_info["XMPInfo"]["RelativeAltitude"])
+
+# ref_rel_alt = float(ref_point_info["XMPInfo"]["RelativeAltitude"])
 
 for image_path in images:
     gps_info = get_image_properties(image_path)["GPSInfo"]
     xmp_info = get_image_properties(image_path)["XMPInfo"]
     geodetic_data.append(extract_gps_data(gps_info, xmp_info))
 
-for lat1, lon1, alt1 in geodetic_data:
-    geocentric_data.append(geodetic_to_ecef(lat1, lon1, alt1))
+
+ned_data = gps2ned(geodetic_data, ref_id=0)
 
 ref_geo = geodetic_data[0]
-# print(ref_geo)
-for ecef1 in geocentric_data:
-    ned_data.append(ecef_to_ned(ecef1, ref_geo[0], ref_geo[1], ref_geo[2]))
-
-# Coreection is necessary due to approx uncertainty
-correction_value = ned_data[0]
-ned_data = [
-    [
-        data[0] - correction_value[0],
-        data[1] - correction_value[1],
-        data[2] - correction_value[2],
-    ]
-    for data in ned_data
-]
-
 
 ned1 = ned_data[0]
 ned2 = ned_data[1]
@@ -67,6 +58,7 @@ distance_ned = np.linalg.norm(np.array(ned1) - np.array(ned2))
 # plot_3DGrid(ned_data)
 
 world_corners_all = []
+ref_point_info = get_image_properties(images[0])
 L2 = camera(ref_point_info)
 # point_ids = [11, 16, 215, 123, 47]
 for point_id in range(len(images)):
@@ -77,5 +69,30 @@ for point_id in range(len(images)):
     world_corners = L2.imgToWorldCoord(T, img_info)
     world_corners_all.append(world_corners)
 # plot_3DGrid(world_corners)
-print(np.array(world_corners_all).shape)
-plot_fov(world_corners_all)
+# plot_fov(world_corners_all)
+
+plot_drone_fov_in_3d(ned_data, world_corners_all)
+field_corners = extract_field_shape(ned_data, world_corners_all)
+
+# Plot the extracted field boundary
+field_corners = np.array(field_corners)
+plt.figure(figsize=(8, 6))
+plt.fill(field_corners[:, 0], field_corners[:, 1], color="yellow", alpha=0.5)
+plt.plot(field_corners[:, 0], field_corners[:, 1], "r-", lw=2)
+plt.xlabel("X (North)")
+plt.ylabel("Y (East)")
+plt.title("Extracted Field Boundary")
+plt.show()
+
+
+# Example usage:
+kmz_file_path = "/home/bota/Downloads/Adria_allettato.kmz"
+gps_data = read_kmz_and_extract_coordinates(kmz_file_path)
+
+# Check the extracted data
+for i, placemark_coords in enumerate(gps_data):
+    print(f"Placemark {i+1} coordinates:")
+    for coord in placemark_coords:
+        print(coord)  # Prints (latitude, longitude, altitude)
+        ecef_point = geodetic_to_ecef(coord[0], coord[1], coord[1])
+        print(ecef_to_ned(ecef_point, ref_geo[0], ref_geo[1], ref_geo[2]))
