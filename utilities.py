@@ -81,12 +81,12 @@ def get_image_properties(image_path):
     return image_data
 
 
-def gps2ned(geodetic_data, ref_id=0):
+def gps2ned(geodetic_data, ref_id=0, ref_geo=None):
     geocentric_data, ned_data = [], []
     for lat1, lon1, alt1 in geodetic_data:
         geocentric_data.append(geodetic_to_ecef(lat1, lon1, alt1))
-
-    ref_geo = geodetic_data[ref_id]
+    if ref_geo is None:
+        ref_geo = geodetic_data[ref_id]
     for ecef1 in geocentric_data:
         ned_data.append(ecef_to_ned(ecef1, ref_geo[0], ref_geo[1], ref_geo[2]))
 

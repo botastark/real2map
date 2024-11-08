@@ -32,8 +32,6 @@ images.extend(glob.glob(os.path.join(DIR, "*.JPG")))
 # print(ref_point_info["EXIF"]["LensSpecification"])
 
 
-# ref_rel_alt = float(ref_point_info["XMPInfo"]["RelativeAltitude"])
-
 for image_path in images:
     gps_info = get_image_properties(image_path)["GPSInfo"]
     xmp_info = get_image_properties(image_path)["XMPInfo"]
@@ -59,6 +57,8 @@ distance_ned = np.linalg.norm(np.array(ned1) - np.array(ned2))
 
 world_corners_all = []
 ref_point_info = get_image_properties(images[0])
+
+ref_rel_alt = float(ref_point_info["XMPInfo"]["RelativeAltitude"])
 L2 = camera(ref_point_info)
 # point_ids = [11, 16, 215, 123, 47]
 for point_id in range(len(images)):
@@ -85,14 +85,22 @@ plt.title("Extracted Field Boundary")
 plt.show()
 
 
-# Example usage:
+"""
+# exploring KMZ found
 kmz_file_path = "/home/bota/Downloads/Adria_allettato.kmz"
 gps_data = read_kmz_and_extract_coordinates(kmz_file_path)
 
+ned_data_kmz = []
 # Check the extracted data
+geodetic_data_kmz = []
 for i, placemark_coords in enumerate(gps_data):
-    print(f"Placemark {i+1} coordinates:")
+    # print(f"Placemark {i+1} coordinates:")
     for coord in placemark_coords:
-        print(coord)  # Prints (latitude, longitude, altitude)
-        ecef_point = geodetic_to_ecef(coord[0], coord[1], coord[1])
-        print(ecef_to_ned(ecef_point, ref_geo[0], ref_geo[1], ref_geo[2]))
+        # print(coord)  # Prints (latitude, longitude, altitude)
+        geodetic_data_kmz.append([coord[0], coord[1], coord[1] + ref_rel_alt])
+        # ecef_point = geodetic_to_ecef()
+        # ned_data_kmz.append(ecef_to_ned(ecef_point, ref_geo[0], ref_geo[1], ref_geo[2]))
+ned_data_kmz = gps2ned(geodetic_data_kmz, ref_geo=ref_geo)
+ned_data.extend(ned_data_kmz)
+plot_3DGrid(ned_data)
+"""
