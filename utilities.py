@@ -1,5 +1,6 @@
 from PIL.ExifTags import TAGS, GPSTAGS
 from PIL import Image
+import cv2
 import pyproj
 import navpy
 import numpy as np
@@ -150,8 +151,6 @@ def extract_field_shape(ned_data, world_corners_all):
         return rect_corners
 
 
-# plt.title('Extracted Field Boundary')
-# plt.show()
 import zipfile
 import xml.etree.ElementTree as ET
 
@@ -194,3 +193,105 @@ def order_fov_corners(corners):
     angles = np.arctan2(corners[:, 1] - centroid[1], corners[:, 0] - centroid[0])
     ordered_corners = corners[np.argsort(angles)]
     return ordered_corners
+
+
+def average_of_top_n(values, n, ascending=True):
+    sorted_indices = np.argsort(values)
+    if ascending:
+        return np.median(values[sorted_indices[:n]])
+    else:
+        return np.median(values[sorted_indices[-n:]])
+
+
+def four_corners(fovs, n_avg):
+    fovs_ = np.array(fovs)
+    avg_N = fovs_[:, :, 0].mean()
+    avg_E = fovs_[:, :, 1].mean()
+    quarter1, quarter2, quarter3, quarter4 = [], [], [], []
+    fovs_ = fovs_.reshape(-1, 3)
+    for fov in fovs_:
+        if fov[0] < avg_N and fov[1] < avg_E:
+            quarter3.append(fov)
+        elif fov[0] < avg_N and fov[1] > avg_E:
+            quarter4.append(fov)
+        elif fov[0] > avg_N and fov[1] > avg_E:
+            quarter1.append(fov)
+        elif fov[0] > avg_N and fov[1] < avg_E:
+            quarter2.append(fov)
+        else:
+            continue
+    # max -max UR
+    quarter1 = np.array(quarter1)
+
+    upright = [
+        average_of_top_n(quarter1[:, 0], n_avg, ascending=False),
+        average_of_top_n(quarter1[:, 1], n_avg, ascending=False),
+    ]
+
+    #  max min UL
+    quarter2 = np.array(quarter2)
+    upleft = [
+        average_of_top_n(quarter2[:, 0], n_avg, ascending=False),
+        average_of_top_n(quarter2[:, 1], n_avg),
+    ]
+    # min-min DL
+    quarter3 = np.array(quarter3)
+    downleft = [
+        average_of_top_n(quarter3[:, 0], n_avg),
+        average_of_top_n(quarter3[:, 1], n_avg),
+    ]
+    #  min max DR
+    quarter4 = np.array(quarter4)
+    downright = [
+        average_of_top_n(quarter4[:, 0], n_avg),
+        average_of_top_n(quarter4[:, 1], n_avg, ascending=False),
+    ]
+
+    return np.array([upright, upleft, downleft, downright])
+
+
+from scipy.spatial import ConvexHull
+
+
+def minimum_bounding_rectangle(points):
+    hull_points = points[ConvexHull(points).vertices]
+    rect = cv2.minAreaRect(hull_points.astype(np.float32))
+    box = cv2.boxPoints(rect)  # Get the corner points of the box
+    box = np.int32(box)
+    return box
+
+
+def divide_field_into_tiles(corners, tile_size):
+    x = corners[:, 0]
+    y = corners[:, 1]
+
+    x_min, x_max = np.min(x), np.max(x)
+    y_min, y_max = np.min(y), np.max(y)
+
+    x_tiles = int(
+        np.ceil((x_max - x_min) / tile_size[0])
+    )  # Number of tiles in the x direction
+    y_tiles = int(
+        np.ceil((y_max - y_min) / tile_size[1])
+    )  # Number of tiles in the y direction
+
+    # Generate the corners of each tile
+    tiles = []
+    for i in range(x_tiles):
+        for j in range(y_tiles):
+            # Calculate the corners of each tile
+            tile_corners = [
+                [x_min + i * tile_size[0], y_min + j * tile_size[1]],  # bottom-left
+                [
+                    x_min + (i + 1) * tile_size[0],
+                    y_min + j * tile_size[1],
+                ],  # bottom-right
+                [
+                    x_min + (i + 1) * tile_size[0],
+                    y_min + (j + 1) * tile_size[1],
+                ],  # top-right
+                [x_min + i * tile_size[0], y_min + (j + 1) * tile_size[1]],  # top-left
+            ]
+            tiles.append(np.array(tile_corners))
+
+    return tiles

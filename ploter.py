@@ -35,47 +35,58 @@ def plot_3DGrid(points):
 # https://stackoverflow.com/questions/67410270/how-to-draw-a-flat-3d-rectangle-in-matplotlib
 
 
-def plot_fov(points):
-    i = 0
+def plot_fov_2d(points, corners, field_corners=None, bounding_box=None):
+    fig, ax = plt.subplots(figsize=(8, 8))
     for point in points:
-        # for each img there's 4 corners
-        ned = np.array(point)
-        xs = ned[:, 0]
-        ys = ned[:, 1]
-        zs = ned[:, 2]
-        fig = plt.figure(figsize=(8, 8))
-        ax = plt.axes(projection="3d")
-        # ax.contourf(xs, ys, zs, cmap=cm.coolwarm)
-        surf1 = ax.plot_trisurf(xs, ys, zs, antialiased=True)
-        if i == 2:
-            break
+        corners_ = order_fov_corners(point)
+        ax.fill(corners_[:, 1], corners_[:, 0], alpha=0.2)
+    if corners is not None:
+        (line1,) = ax.plot(
+            np.append(corners[:, 1], corners[0, 1]),
+            # corners[:, 1],
+            np.append(corners[:, 0], corners[0, 0]),
+            # corners[:, 0],
+            "g-",
+            lw=1.5,
+            label="Calculated Avg",
+        )
+    if field_corners is not None:
+        # plt.fill(field_corners[:, 1], field_corners[:, 0], color="yellow", alpha=0.5)
+        (line2,) = ax.plot(
+            field_corners[:, 1],
+            field_corners[:, 0],
+            "r-",
+            lw=0.5,
+            label="Hull",
+        )
+    if bounding_box is not None:
+        (line3,) = ax.plot(
+            np.append(bounding_box[:, 1], bounding_box[0, 1]),
+            np.append(bounding_box[:, 0], bounding_box[0, 0]),
+            "b-",
+            lw=1.5,
+            label="Hull Bbox",
+        )
+        # plt.fill(bounding_box[:, 1], bounding_box[:, 0], color="yellow", alpha=0.3)
+
+    ax.set_xlabel("East")
+    ax.set_ylabel("North")
+    ax.set_aspect("equal", "box")
+    ax.legend(handles=[line1, line2, line3])
     plt.show()
-    # break
 
 
 def plot_drone_fov_in_3d(ned_data, world_corners_all):
-    """
-    Plot drone positions with altitude and FoV projections on the ground plane in the NED frame (3D).
-
-    Parameters:
-    ned_data (numpy.ndarray): Array of drone positions (n, 3) in the NED frame.
-    world_corners_all (list of lists): Each entry contains 4 (x, y, 0) tuples for the FoV corners on the ground.
-    """
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection="3d")
     num_positions = len(ned_data)
-    colors = cm.viridis(
-        np.linspace(0, 1, num_positions)
-    )  # You can choose other colormaps like 'plasma', 'jet', etc.
+    colors = cm.viridis(np.linspace(0, 1, num_positions))  #  'plasma', 'jet', etc.
 
-    # Ensure the lists are of equal length
     assert len(ned_data) == len(
         world_corners_all
     ), "Each camera position must have a corresponding FoV projection."
 
-    # Iterate over each camera position and its corresponding FoV corners
     for idx, (loc, corners) in enumerate(zip(ned_data, world_corners_all)):
-        # Plot the camera location in 3D
         corners_ = order_fov_corners(corners)
         color = colors[idx]
         ax.scatter(
@@ -87,13 +98,11 @@ def plot_drone_fov_in_3d(ned_data, world_corners_all):
             label=f"Camera {idx + 1}" if idx == 0 else "",
         )
 
-        # Create a 3D polygon for the FoV on the ground
         fov_polygon = Poly3DCollection(
             [corners_], color=color, alpha=0.3, edgecolor=color
         )
         ax.add_collection3d(fov_polygon)
 
-        # Draw rays from the camera location to each corner of the FoV on the ground
         for corner in corners:
             ax.plot(
                 [loc[0], corner[0]],
@@ -109,44 +118,37 @@ def plot_drone_fov_in_3d(ned_data, world_corners_all):
     ax.set_ylabel("Y (East)")
     ax.set_zlabel("Z (Down)")
     ax.set_title("Drone Positions and Projected FoV on Ground with Ray Casting")
-    # Create a ScalarMappable to map color values
     norm = plt.Normalize(vmin=0, vmax=num_positions - 1)
     sm = plt.cm.ScalarMappable(cmap="viridis", norm=norm)
     sm.set_array(
         []
     )  # Empty array as we're not displaying data but just the color scale
 
-    # Add the colorbar to the plot
     cbar = plt.colorbar(sm, ax=ax, shrink=0.7, aspect=10)
     cbar.set_label("Camera Position Index", rotation=270, labelpad=15)
 
-    # Adjust the view to show the 3D structure
     ax.view_init(elev=45, azim=135)
     ax.grid(True)
     ax.legend()
     plt.show()
 
 
-def plot_field_boundaries(field_corners):
-    # Plot the extracted field boundary
-    field_corners = np.array(field_corners)
-    plt.figure(figsize=(6, 12))
-    plt.fill(field_corners[:, 1], field_corners[:, 0], color="yellow", alpha=0.5)
-    plt.plot(field_corners[:, 1], field_corners[:, 0], "r-", lw=2)
-    plt.ylabel("X (North)")
-    plt.xlabel("Y (East)")
+def plot_tiles(tiles, corners):
+    fig, ax = plt.subplots(figsize=(8, 8))
 
-    # Define the min and max values for X and Y based on field_corners
-    x_min, x_max = field_corners[:, 1].min(), field_corners[:, 1].max()
-    y_min, y_max = field_corners[:, 0].min(), field_corners[:, 0].max()
+    # Plot the original field corners (optional)
+    ax.scatter(corners[:, 1], corners[:, 0], color="red", label="Corners")
 
-    # Set the ticks at every 10 units within the min-max range
-    x_ticks = np.arange(np.floor(x_min / 20) * 20, np.ceil(x_max / 20) * 20 + 20, 20)
-    y_ticks = np.arange(np.floor(y_min / 20) * 20, np.ceil(y_max / 20) * 20 + 20, 20)
+    # Plot each tile
+    for tile in tiles:
+        tile = np.vstack(
+            [tile, tile[0]]
+        )  # Close the tile by appending the first corner
+        ax.plot(tile[:, 1], tile[:, 0], color="blue", alpha=0.5)
+        ax.fill(tile[:, 1], tile[:, 0], alpha=0.2)
 
-    # Apply the same ticks to both axes
-    plt.xticks(x_ticks)
-    plt.yticks(y_ticks)
-    plt.title("Extracted Field Boundary")
-    plt.gca().set_aspect("equal", adjustable="box")
+    ax.set_xlabel("East")
+    ax.set_ylabel("North")
+    ax.set_aspect("equal", "box")
+    ax.legend()
     plt.show()
