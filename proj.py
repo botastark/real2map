@@ -1,7 +1,36 @@
 # Given camera params, create observation
 
+import math
 import numpy as np
 import cv2
+
+# # Field of View in degrees for both modes
+fov_horizontal = 70  # same for both modes
+fov_vertical_non_repetitive = 75
+import math
+
+# Given parameters
+focal_length = 12.29  # in mm
+img_width_pixels = 5280
+img_height_pixels = 3956
+
+
+# Conversion function for sensor dimensions using FOV and focal length
+def calculate_sensor_dim(focal_length, fov_horizontal, fov_vertical):
+    sensor_width = 2 * focal_length * math.tan(math.radians(fov_horizontal / 2))
+    sensor_height_repetitive = (
+        2 * focal_length * math.tan(math.radians(fov_vertical / 2))
+    )
+    return sensor_width, sensor_height_repetitive
+
+
+sensor_width, sensor_height_non_repetitive = calculate_sensor_dim(
+    focal_length, fov_horizontal, fov_vertical_non_repetitive
+)
+
+print(
+    f"sensor_width {sensor_width}h, sensor_height_repetitive {sensor_height_non_repetitive}"
+)
 
 
 class camera:
@@ -12,9 +41,18 @@ class camera:
         self.cy = self.img_height / 2
 
         self.f = float(ref_point_info["EXIF"]["FocalLength"])
+        print(self.f)
+        # self.f = 12.3
         # Calculate focal lengths in pixels
-        self.sensor_width = 17.3  # in mm
-        self.sensor_height = 13.0  # in mm
+        self.sensor_width, self.sensor_height = calculate_sensor_dim(
+            self.f, fov_horizontal, fov_vertical_non_repetitive
+        )
+        print(
+            f"sensor_widt {self.sensor_width}h, sensor_height_repetitive {self.sensor_height}"
+        )
+        # self.sensor_width = 17.46  # in mm
+        # self.sensor_height = 35.46  # in mm
+
         self.f_x = (self.f * self.img_width) / self.sensor_width
         self.f_y = (self.f * self.img_height) / self.sensor_height
         self.alt_offset = float(ref_point_info["XMPInfo"]["RelativeAltitude"])
