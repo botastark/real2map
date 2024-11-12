@@ -4,34 +4,6 @@ import math
 import numpy as np
 import cv2
 
-# # Field of View in degrees for both modes
-fov_horizontal = 70  # same for both modes
-fov_vertical_non_repetitive = 75
-import math
-
-# Given parameters
-focal_length = 12.29  # in mm
-img_width_pixels = 5280
-img_height_pixels = 3956
-
-
-# Conversion function for sensor dimensions using FOV and focal length
-def calculate_sensor_dim(focal_length, fov_horizontal, fov_vertical):
-    sensor_width = 2 * focal_length * math.tan(math.radians(fov_horizontal / 2))
-    sensor_height_repetitive = (
-        2 * focal_length * math.tan(math.radians(fov_vertical / 2))
-    )
-    return sensor_width, sensor_height_repetitive
-
-
-sensor_width, sensor_height_non_repetitive = calculate_sensor_dim(
-    focal_length, fov_horizontal, fov_vertical_non_repetitive
-)
-
-print(
-    f"sensor_width {sensor_width}h, sensor_height_repetitive {sensor_height_non_repetitive}"
-)
-
 
 class camera:
     def __init__(self, ref_point_info):
@@ -42,11 +14,12 @@ class camera:
 
         self.f = float(ref_point_info["EXIF"]["FocalLength"])
         print(self.f)
-        # self.f = 12.3
-        # Calculate focal lengths in pixels
-        self.sensor_width, self.sensor_height = calculate_sensor_dim(
-            self.f, fov_horizontal, fov_vertical_non_repetitive
+        self.pixel_size = 3.3e-3  # e-6, to have width in mm
+        self.sensor_width, self.sensor_height = (
+            self.img_width * self.pixel_size,
+            self.img_height * self.pixel_size,
         )
+
         print(
             f"sensor_widt {self.sensor_width}h, sensor_height_repetitive {self.sensor_height}"
         )
@@ -89,19 +62,17 @@ class camera:
             np.deg2rad(float(point_info["XMPInfo"]["GimbalRollDegree"])),
         )
         world_corners = []
-        R_z = cv2.Rodrigues(np.array([0, 0, yaw]))[0]
-        R_y = cv2.Rodrigues(np.array([0, pitch, 0]))[0]
-        R_x = cv2.Rodrigues(np.array([roll, 0, 0]))[0]
-        R = R_z @ R_y @ R_x  # Combine rotations in ZYX order
-        # R = cv2.Rodrigues(np.array([roll, pitch, yaw]))[0]
+        # R_z = cv2.Rodrigues(np.array([0, 0, yaw]))[0]
+        # R_y = cv2.Rodrigues(np.array([0, pitch, 0]))[0]
+        # R_x = cv2.Rodrigues(np.array([roll, 0, 0]))[0]
+        # R = R_z @ R_y @ R_x  # Combine rotations in ZYX order
+        R = cv2.Rodrigues(np.array([roll, pitch, yaw]))[0]
         ground_z = 0
         for corner in img_corners_normalized:
             ray_dir = R @ corner  # Rotate corner ray into world coordinates
-            # ray_dir = np.dot(R, corner)  # Rotate into world coordinates
             scale = (ground_z - T[2]) / ray_dir[2]
             # Compute scale factor for intersection with ground
             world_point = T + scale * ray_dir  # Compute world coordinates
             world_corners.append(world_point)
 
         return world_corners
-        # print(world_corners)
