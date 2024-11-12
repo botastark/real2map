@@ -1,6 +1,5 @@
 # Given camera params, create observation
 
-import math
 import numpy as np
 import cv2
 
@@ -13,18 +12,11 @@ class camera:
         self.cy = self.img_height / 2
 
         self.f = float(ref_point_info["EXIF"]["FocalLength"])
-        print(self.f)
         self.pixel_size = 3.3e-3  # e-6, to have width in mm
         self.sensor_width, self.sensor_height = (
             self.img_width * self.pixel_size,
             self.img_height * self.pixel_size,
         )
-
-        print(
-            f"sensor_widt {self.sensor_width}h, sensor_height_repetitive {self.sensor_height}"
-        )
-        # self.sensor_width = 17.46  # in mm
-        # self.sensor_height = 35.46  # in mm
 
         self.f_x = (self.f * self.img_width) / self.sensor_width
         self.f_y = (self.f * self.img_height) / self.sensor_height
