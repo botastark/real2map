@@ -295,3 +295,36 @@ def divide_field_into_tiles(corners, tile_size):
             tiles.append(np.array(tile_corners))
 
     return tiles
+
+
+def ned_to_image_mapping(ned_corners, image_width, image_height):
+    """
+    Maps the NED coordinates to image coordinates (pixels).
+    """
+    north_min, east_min = np.min(ned_corners, axis=0)
+    north_max, east_max = np.max(ned_corners, axis=0)
+
+    # Calculate pixel per NED unit in both directions
+    pixel_per_north = image_height / (north_max - north_min)
+    pixel_per_east = image_width / (east_max - east_min)
+
+    return north_min, east_min, pixel_per_north, pixel_per_east
+
+
+def map_tile_to_image(
+    tile_corners, north_min, east_min, pixel_per_north, pixel_per_east
+):
+    """
+    Maps a given tile's NED corners to image pixel coordinates.
+    """
+    # Convert NED coordinates to image coordinates (pixels)
+    image_tile = []
+    for corner in tile_corners:
+        north, east = corner
+        x = (east - east_min) * pixel_per_east
+        y = (north_min - north) * pixel_per_north  # invert y-axis (top-left origin)
+        image_tile.append([x, y])
+    # print(f"pxE {pixel_per_east} pxN {pixel_per_north}")
+    # print(f"E {east} N {north}")
+    # print(f"x {y} y {y}")
+    return np.array(image_tile)

@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+from utilities import map_tile_to_image
 from utilities import order_fov_corners
 
 
@@ -151,4 +152,33 @@ def plot_tiles(tiles, corners):
     ax.set_ylabel("North")
     ax.set_aspect("equal", "box")
     ax.legend()
+    plt.show()
+
+
+def plot_image_with_tiles(
+    image, tile_corners, north_min, east_min, pixel_per_north, pixel_per_east
+):
+    """
+    Plots the image and overlays the tiles based on the given NED corners.
+    """
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.imshow(image, cmap="gray")  # Assuming a grayscale image
+
+    for corners in tile_corners:
+        # Map the NED corners of the tile to image pixel coordinates
+        image_tile = map_tile_to_image(
+            corners, north_min, east_min, pixel_per_north, pixel_per_east
+        )
+
+        # Plot the tile boundary (connect the corners)
+        image_tile = np.vstack(
+            [image_tile, image_tile[0]]
+        )  # Close the tile by adding the first corner
+        ax.plot(image_tile[:, 0], image_tile[:, 1], color="r", alpha=0.7)
+        ax.fill(image_tile[:, 0], image_tile[:, 1], alpha=0.2, color="b")
+    # ax.set_xlim((-2000, 6000))
+    # ax.set_ylim((-2000, 6000))
+    ax.set_xlabel("East (pixels)")
+    ax.set_ylabel("North (pixels)")
+    ax.set_aspect("equal", "box")
     plt.show()
